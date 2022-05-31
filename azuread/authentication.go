@@ -3,6 +3,7 @@ package azuread
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -35,7 +36,12 @@ func GetBearerToken(configuration *TwinConfiguration) (*AccessToken, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to obtain access token: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Printf("Unable to close body: %v", err)
+		}
+	}(resp.Body)
 
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
