@@ -10,11 +10,10 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"strings"
 	"time"
 )
 
-func queryTwin[T models.IModel](client *Client, query string) ([]T, error) {
+func queryTwin(client *Client, query string) (*[]byte, error) {
 	currentTime := time.Now().Unix()
 	var err error
 	endpoint := client.getQueryEndpoint()
@@ -66,8 +65,17 @@ func queryTwin[T models.IModel](client *Client, query string) ([]T, error) {
 		return nil, err
 	}
 
+	return &respContent, nil
+}
+
+func QueryTwin[T models.IModel](client *Client, query string) ([]T, error) {
+	queryData, err := queryTwin(client, query)
+	if err != nil {
+		return nil, err
+	}
+
 	var data QueryResult[T]
-	err = json.Unmarshal(respContent, &data)
+	err = json.Unmarshal(*queryData, &data)
 	if err != nil {
 		return nil, fmt.Errorf("unable to extract digital twin results: %v", err)
 	}
@@ -75,8 +83,9 @@ func queryTwin[T models.IModel](client *Client, query string) ([]T, error) {
 	log.Printf("Retrieved %d records", len(data.Results))
 
 	results := make([]T, len(data.Results))
+	entityAlias := (*new(T)).Alias()
 	for i, v := range data.Results {
-		entry, ok := v[GetModelAlias[T]()]
+		entry, ok := v[entityAlias]
 		if ok {
 			results[i] = entry
 		}
@@ -86,14 +95,7 @@ func queryTwin[T models.IModel](client *Client, query string) ([]T, error) {
 }
 
 func GetTwinsOfType[T models.IModel](client *Client) ([]T, error) {
-	aliasName := GetModelAlias[T]()
+	aliasName := (*new(T)).Alias()
 	query := fmt.Sprintf("SELECT %[1]s FROM digitaltwins %[1]s WHERE IS_OF_MODEL(%[1]s, '%[2]s')", aliasName, (*new(T)).Model())
-	return queryTwin[T](client, query)
-}
-
-func GetModelAlias[T models.IModel]() string {
-	var entity T
-	entityNameParts := strings.Split(fmt.Sprintf("%T", entity), ".")
-	entityName := strings.ToLower(entityNameParts[len(entityNameParts)-1])
-	return entityName
+	return QueryTwin[T](client, query)
 }
