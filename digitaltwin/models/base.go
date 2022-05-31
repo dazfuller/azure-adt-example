@@ -1,9 +1,14 @@
 package models
 
-import "fmt"
+import (
+	"fmt"
+	"reflect"
+	"strings"
+)
 
 type IModel interface {
 	Model() string
+	Alias() string
 }
 
 type GenericModel struct {
@@ -23,4 +28,9 @@ func (gm *GenericModel) TwinModelType() string {
 	}
 
 	return gm.Model()
+}
+
+func (gm GenericModel) Alias() string {
+	typeNameParts := strings.Split(reflect.TypeOf(gm).Name(), ",")
+	return typeNameParts[len(typeNameParts)-1]
 }
