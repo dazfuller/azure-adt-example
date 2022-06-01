@@ -94,6 +94,62 @@ func QueryTwin[T models.IModel](client *Client, query string) ([]T, error) {
 	return results, nil
 }
 
+func ExecuteBuilder[T1, T2 models.IModel](client *Client, builder *Builder) ([][]models.IModel, error) {
+	type1 := *new(T1)
+	type2 := *new(T2)
+
+	err := builder.AddProjection(type1)
+	if err != nil {
+		return nil, err
+	}
+
+	err = builder.AddProjection(type2)
+	if err != nil {
+		return nil, err
+	}
+
+	query, err := builder.CreateQuery()
+	if err != nil {
+		return nil, err
+	}
+
+	queryData, err := queryTwin(client, query)
+	if err != nil {
+		return nil, err
+	}
+
+	var data QueryResultGeneric
+	err = json.Unmarshal(*queryData, &data)
+	if err != nil {
+		return nil, fmt.Errorf("unable to extract digital twin results: %v", err)
+	}
+
+	results := make([][]models.IModel, len(data.Results))
+
+	for i, v := range data.Results {
+		row := make([]models.IModel, 2)
+
+		content, ok := v[type1.Alias()]
+		if ok {
+			var t1 T1
+			err = json.Unmarshal(content, &t1)
+			row[0] = t1
+		}
+
+		if content, ok := v[type2.Alias()]; ok {
+			var t2 T2
+			err = json.Unmarshal(content, &t2)
+			row[1] = t2
+		}
+
+		results[i] = row
+	}
+
+	log.Printf("found %d records", len(data.Results))
+
+	return results, nil
+}
+
 func GetTwinsOfType[T models.IModel](client *Client) ([]T, error) {
 	aliasName := (*new(T)).Alias()
 	query := fmt.Sprintf("SELECT %[1]s FROM digitaltwins %[1]s WHERE IS_OF_MODEL(%[1]s, '%[2]s')", aliasName, (*new(T)).Model())

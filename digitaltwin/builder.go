@@ -11,6 +11,7 @@ type Builder struct {
 	validateFrom bool
 	join         []Join
 	where        []string
+	project      []models.IModel
 }
 
 type Join struct {
@@ -26,6 +27,7 @@ func NewBuilder(from models.IModel, validateType bool) *Builder {
 		validateFrom: validateType,
 		join:         make([]Join, 0),
 		where:        make([]string, 0),
+		project:      make([]models.IModel, 0),
 	}
 }
 
@@ -55,7 +57,30 @@ func (b *Builder) AddJoin(source models.IModel, target models.IModel, relationsh
 }
 
 func (b *Builder) WhereId(source models.IModel, id string) error {
+	if !b.sourceExists(source) {
+		return fmt.Errorf("source %s is not part of the query", source.Alias())
+	}
+
+	b.where = append(b.where, fmt.Sprintf("%s.$dtId = '%s'", source.Alias(), id))
+
+	return nil
+}
+
+func (b *Builder) AddProjection(source models.IModel) error {
+	if !b.sourceExists(source) {
+		return fmt.Errorf("source %s is not part of the query", source.Alias())
+	}
+
+	if !b.projectionExists(source) {
+		b.project = append(b.project, source)
+	}
+
+	return nil
+}
+
+func (b *Builder) sourceExists(source models.IModel) bool {
 	sourceExists := b.from.Alias() == source.Alias()
+
 	if !sourceExists {
 		for _, j := range b.join {
 			if j.target.Alias() == source.Alias() {
@@ -65,24 +90,38 @@ func (b *Builder) WhereId(source models.IModel, id string) error {
 		}
 	}
 
-	if !sourceExists {
-		return fmt.Errorf("source %s is not part of the query", source.Alias())
+	return sourceExists
+}
+
+func (b *Builder) projectionExists(source models.IModel) bool {
+	exists := false
+
+	for _, p := range b.project {
+		if p.Alias() == source.Alias() {
+			exists = true
+			break
+		}
 	}
 
-	b.where = append(b.where, fmt.Sprintf("%s.$dtId == '%s'", source.Alias(), id))
-
-	return nil
+	return exists
 }
 
 func (b *Builder) CreateQuery() (string, error) {
-	selectTwins := make([]string, len(b.join)+1)
+	selectTwins := make([]string, len(b.project))
+	if len(b.project) == 0 {
+		selectTwins = append(selectTwins, b.from.Alias())
+	} else {
+		for i, p := range b.project {
+			selectTwins[i] = p.Alias()
+		}
+	}
+
 	whereStatements := b.where
 
 	fromStatement := fmt.Sprintf("digitaltwins %s", b.from.Alias())
 	if b.validateFrom {
 		whereStatements = append(whereStatements, b.from.ValidationClause())
 	}
-	selectTwins[0] = b.from.Alias()
 
 	joinStatements := make([]string, len(b.join))
 	for i, j := range b.join {
@@ -90,7 +129,6 @@ func (b *Builder) CreateQuery() (string, error) {
 		if j.validateType {
 			whereStatements = append(whereStatements, j.target.ValidationClause())
 		}
-		selectTwins[i+1] = j.target.Alias()
 	}
 
 	joinStatement := strings.Join(joinStatements, " ")
