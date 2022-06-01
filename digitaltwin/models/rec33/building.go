@@ -10,3 +10,11 @@ type Building struct {
 func (Building) Model() string {
 	return "dtmi:digitaltwins:rec_3_3:core:Building;1"
 }
+
+func (Building) Alias() string {
+	return models.GetModelAlias[Building]()
+}
+
+func (Building) ValidationClause() string {
+	return models.ModelValidationClause[Building]()
+}

@@ -15,7 +15,24 @@ func main() {
 		log.Fatal(err)
 	}
 	client := digitaltwin.NewClient(config, auth)
-	results, err := digitaltwin.GetTwinsOfType[rec33.Company](client)
+
+	from := rec33.Company{}
+	builder := digitaltwin.NewBuilder(from, true)
+
+	err = builder.AddJoin(from, rec33.Building{}, "owns", true)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = builder.WhereId(from, "NHHG")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	query, _ := builder.CreateQuery()
+	fmt.Printf("Generated query:\n%s\n", query)
+
+	results, err := digitaltwin.GetTwinsOfType[rec33.Building](client)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -16,3 +16,11 @@ type Company struct {
 func (Company) Model() string {
 	return "dtmi:digitaltwins:rec_3_3:agents:Company;1"
 }
+
+func (Company) Alias() string {
+	return models.GetModelAlias[Company]()
+}
+
+func (Company) ValidationClause() string {
+	return models.ModelValidationClause[Company]()
+}

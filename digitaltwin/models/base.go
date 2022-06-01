@@ -9,6 +9,7 @@ import (
 type IModel interface {
 	Model() string
 	Alias() string
+	ValidationClause() string
 }
 
 type GenericModel struct {
@@ -17,20 +18,21 @@ type GenericModel struct {
 	Metadata   map[string]interface{} `json:"$metadata"`
 }
 
-func (GenericModel) Model() string {
-	return "Unknown"
-}
-
 func (gm *GenericModel) TwinModelType() string {
 	model, ok := gm.Metadata["$model"]
 	if ok {
 		return fmt.Sprintf("%s", model)
 	}
 
-	return gm.Model()
+	return "Unknown"
 }
 
-func (gm GenericModel) Alias() string {
-	typeNameParts := strings.Split(reflect.TypeOf(gm).Name(), ",")
-	return typeNameParts[len(typeNameParts)-1]
+func GetModelAlias[T IModel]() string {
+	typeNameParts := strings.Split(reflect.TypeOf(*new(T)).Name(), ",")
+	return strings.ToLower(typeNameParts[len(typeNameParts)-1])
+}
+
+func ModelValidationClause[T IModel]() string {
+	t := *new(T)
+	return fmt.Sprintf("IS_OF_MODEL(%s, '%s')", t.Alias(), t.Model())
 }
