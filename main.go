@@ -28,20 +28,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	query, _ := builder.CreateQuery()
-	fmt.Printf("Generated query:\n%s\n", query)
-
-	_, err = digitaltwin.ExecuteBuilder[rec33.Company, rec33.Building](client, builder)
+	results, err := digitaltwin.ExecuteBuilder[rec33.Company, rec33.Building](client, builder)
 	if err != nil {
 		log.Fatal(err)
 	}
-	/*
-		results, err := digitaltwin.GetTwinsOfType[rec33.Building](client)
-		if err != nil {
-			log.Fatal(err)
-		}
-		for _, v := range results {
-			fmt.Printf("%s - %s\n", v.Name, v.TwinModelType())
-		}
-	*/
+
+	for _, row := range results {
+		fmt.Printf("%s owns %s\n", row[0].(rec33.Company).Name, row[1].(rec33.Building).Name)
+	}
 }

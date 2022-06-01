@@ -133,12 +133,18 @@ func ExecuteBuilder[T1, T2 models.IModel](client *Client, builder *Builder) ([][
 		if ok {
 			var t1 T1
 			err = json.Unmarshal(content, &t1)
+			if err != nil {
+				return nil, fmt.Errorf("unable to parse %v into %T", content, t1)
+			}
 			row[0] = t1
 		}
 
 		if content, ok := v[type2.Alias()]; ok {
 			var t2 T2
 			err = json.Unmarshal(content, &t2)
+			if err != nil {
+				return nil, fmt.Errorf("unable to parse %v into %T", content, t2)
+			}
 			row[1] = t2
 		}
 
