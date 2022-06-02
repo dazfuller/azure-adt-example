@@ -10,21 +10,15 @@ import (
 
 func main() {
 	config := azuread.NewTwinConfiguration()
-	auth, err := azuread.GetBearerToken(config)
-	if err != nil {
-		log.Fatal(err)
-	}
-	client := digitaltwin.NewClient(config, auth)
+	client := digitaltwin.NewClient(config, nil)
 
 	from := rec33.Company{}
 	builder := digitaltwin.NewBuilder(from, true)
-	_ = builder.AddJoin(from, rec33.Building{}, "owns", false)
-
-	_ = builder.AddProjection(from)
-	_ = builder.AddProjection(rec33.Building{})
-
-	err = builder.WhereId(from, "NHHG")
-	if err != nil {
+	var err error
+	if err = builder.AddJoin(from, rec33.Building{}, "owns", false); err != nil {
+		log.Fatal(err)
+	}
+	if err = builder.WhereId(from, "NHHG"); err != nil {
 		log.Fatal(err)
 	}
 
@@ -34,6 +28,6 @@ func main() {
 	}
 
 	for _, row := range results {
-		fmt.Printf("%s owns %s\n", row[0].(rec33.Company).Name, row[1].(rec33.Building).Name)
+		fmt.Printf("%s owns %s (%s)\n", row.Twin1.Name, row.Twin2.Name, row.Twin2.ExternalId)
 	}
 }

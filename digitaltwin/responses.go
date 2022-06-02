@@ -23,3 +23,12 @@ type QueryResultGeneric struct {
 	Results           []map[string]json.RawMessage `json:"value"`
 	ContinuationToken string                       `json:"continuationToken"`
 }
+
+type TwinResult2[T1, T2 models.IModel] struct {
+	Twin1 T1
+	Twin2 T2
+}
+
+func NewTwinResult2[T1, T2 models.IModel](t1 *T1, t2 *T2) TwinResult2[T1, T2] {
+	return TwinResult2[T1, T2]{*t1, *t2}
+}

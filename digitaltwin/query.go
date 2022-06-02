@@ -94,7 +94,7 @@ func QueryTwin[T models.IModel](client *Client, query string) ([]T, error) {
 	return results, nil
 }
 
-func ExecuteBuilder[T1, T2 models.IModel](client *Client, builder *Builder) ([][]models.IModel, error) {
+func ExecuteBuilder[T1, T2 models.IModel](client *Client, builder *Builder) ([]TwinResult2[T1, T2], error) {
 	type1 := *new(T1)
 	type2 := *new(T2)
 
@@ -124,31 +124,28 @@ func ExecuteBuilder[T1, T2 models.IModel](client *Client, builder *Builder) ([][
 		return nil, fmt.Errorf("unable to extract digital twin results: %v", err)
 	}
 
-	results := make([][]models.IModel, len(data.Results))
+	results := make([]TwinResult2[T1, T2], len(data.Results))
 
 	for i, v := range data.Results {
-		row := make([]models.IModel, 2)
+		t1 := new(T1)
+		t2 := new(T2)
 
 		content, ok := v[type1.Alias()]
 		if ok {
-			var t1 T1
-			err = json.Unmarshal(content, &t1)
+			err = json.Unmarshal(content, t1)
 			if err != nil {
-				return nil, fmt.Errorf("unable to parse %v into %T", content, t1)
+				return nil, fmt.Errorf("unable to parse %v into %T", content, *t1)
 			}
-			row[0] = t1
 		}
 
 		if content, ok := v[type2.Alias()]; ok {
-			var t2 T2
-			err = json.Unmarshal(content, &t2)
+			err = json.Unmarshal(content, t2)
 			if err != nil {
-				return nil, fmt.Errorf("unable to parse %v into %T", content, t2)
+				return nil, fmt.Errorf("unable to parse %v into %T", content, *t2)
 			}
-			row[1] = t2
 		}
 
-		results[i] = row
+		results[i] = NewTwinResult2(t1, t2)
 	}
 
 	log.Printf("found %d records", len(data.Results))
