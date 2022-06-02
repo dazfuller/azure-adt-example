@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+// Builder defines a type for generating Azure Digital Twin SQL queries based on models.IModel
+// types.
 type Builder struct {
 	from         models.IModel
 	validateFrom bool
@@ -14,6 +16,8 @@ type Builder struct {
 	project      []models.IModel
 }
 
+// Join represents a join condition, defining the twin being joined from and to, it's
+// relationship and if the target type requires model verification.
 type Join struct {
 	source       models.IModel
 	target       models.IModel
@@ -21,6 +25,8 @@ type Join struct {
 	validateType bool
 }
 
+// NewBuilder creates a new Builder type based on a required source twin and sets if that twin
+// requires model type verification.
 func NewBuilder(from models.IModel, validateType bool) *Builder {
 	return &Builder{
 		from:         from,
@@ -31,6 +37,7 @@ func NewBuilder(from models.IModel, validateType bool) *Builder {
 	}
 }
 
+// AddJoin adds a new join condition to the Builder. Joins can only be specified once.
 func (b *Builder) AddJoin(source models.IModel, target models.IModel, relationship string, validateType bool) error {
 	exists := false
 	for _, j := range b.join {
@@ -56,6 +63,8 @@ func (b *Builder) AddJoin(source models.IModel, target models.IModel, relationsh
 	return nil
 }
 
+// WhereId defines a simple where condition that filters results to only those where a
+// twin's id matches the given value.
 func (b *Builder) WhereId(source models.IModel, id string) error {
 	if !b.sourceExists(source) {
 		return fmt.Errorf("source %s is not part of the query", source.Alias())
@@ -66,6 +75,8 @@ func (b *Builder) WhereId(source models.IModel, id string) error {
 	return nil
 }
 
+// AddProjection adds an output models.IModel type to the query, this is the equivalent of
+// writing "SELECT <model type>" in the query.
 func (b *Builder) AddProjection(source models.IModel) error {
 	if !b.sourceExists(source) {
 		return fmt.Errorf("source %s is not part of the query", source.Alias())
@@ -78,6 +89,7 @@ func (b *Builder) AddProjection(source models.IModel) error {
 	return nil
 }
 
+// sourceExists checks to see if a source has already been added to the builder.
 func (b *Builder) sourceExists(source models.IModel) bool {
 	sourceExists := b.from.Alias() == source.Alias()
 
@@ -93,6 +105,8 @@ func (b *Builder) sourceExists(source models.IModel) bool {
 	return sourceExists
 }
 
+// projectionExists checks to see if a models.IModel has already been added to
+// the builder.
 func (b *Builder) projectionExists(source models.IModel) bool {
 	exists := false
 
@@ -106,6 +120,8 @@ func (b *Builder) projectionExists(source models.IModel) bool {
 	return exists
 }
 
+// CreateQuery takes the properties assigned to the Builder and generates a valid
+// Azure Digital Twin SQL query.
 func (b *Builder) CreateQuery() (string, error) {
 	selectTwins := make([]string, len(b.project))
 	if len(b.project) == 0 {

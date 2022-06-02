@@ -22,7 +22,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	results, err := digitaltwin.ExecuteBuilder[rec33.Company, rec33.Building](client, builder)
+	results, err := digitaltwin.ExecuteBuilder2[rec33.Company, rec33.Building](client, builder)
 	if err != nil {
 		log.Fatal(err)
 	}

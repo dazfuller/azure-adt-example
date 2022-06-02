@@ -13,11 +13,15 @@ import (
 	"time"
 )
 
+// queryTwin contains the logic for querying the Azure Digital Twin instance. It returns a
+// byte array of data retrieved from the API.
 func queryTwin(client *Client, query string) (*[]byte, error) {
 	currentTime := time.Now().Unix()
 	var err error
 	endpoint := client.getQueryEndpoint()
 
+	// If the access token has not been provided, or has expired, then refresh the
+	// access token
 	if client.accessToken == nil || client.accessToken.ExpiresOn <= currentTime {
 		client.accessToken, err = azuread.GetBearerToken(client.configuration)
 		if err != nil {
@@ -68,33 +72,9 @@ func queryTwin(client *Client, query string) (*[]byte, error) {
 	return &respContent, nil
 }
 
-func QueryTwin[T models.IModel](client *Client, query string) ([]T, error) {
-	queryData, err := queryTwin(client, query)
-	if err != nil {
-		return nil, err
-	}
-
-	var data QueryResult[T]
-	err = json.Unmarshal(*queryData, &data)
-	if err != nil {
-		return nil, fmt.Errorf("unable to extract digital twin results: %v", err)
-	}
-
-	log.Printf("Retrieved %d records", len(data.Results))
-
-	results := make([]T, len(data.Results))
-	entityAlias := (*new(T)).Alias()
-	for i, v := range data.Results {
-		entry, ok := v[entityAlias]
-		if ok {
-			results[i] = entry
-		}
-	}
-
-	return results, nil
-}
-
-func ExecuteBuilder[T1, T2 models.IModel](client *Client, builder *Builder) ([]TwinResult2[T1, T2], error) {
+// ExecuteBuilder2 queries the Azure Digital Twin using the query creating from the Builder instance. It
+// returns an array of TwinResult2 objects which are typed to models.IModel types.
+func ExecuteBuilder2[T1, T2 models.IModel](client *Client, builder *Builder) ([]TwinResult2[T1, T2], error) {
 	type1 := *new(T1)
 	type2 := *new(T2)
 
@@ -151,10 +131,4 @@ func ExecuteBuilder[T1, T2 models.IModel](client *Client, builder *Builder) ([]T
 	log.Printf("found %d records", len(data.Results))
 
 	return results, nil
-}
-
-func GetTwinsOfType[T models.IModel](client *Client) ([]T, error) {
-	aliasName := (*new(T)).Alias()
-	query := fmt.Sprintf("SELECT %[1]s FROM digitaltwins %[1]s WHERE IS_OF_MODEL(%[1]s, '%[2]s')", aliasName, (*new(T)).Model())
-	return QueryTwin[T](client, query)
 }

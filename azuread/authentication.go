@@ -10,6 +10,7 @@ import (
 	"net/url"
 )
 
+// AccessToken represents a response from the Azure token authority.
 type AccessToken struct {
 	TokenType    string `json:"token_type"`
 	ExpiresIn    int64  `json:"expires_in,string"`
@@ -20,6 +21,7 @@ type AccessToken struct {
 	AccessToken  string `json:"access_token"`
 }
 
+// GetBearerToken retrieves a token scoped to the Azure Digital Twin resource.
 func GetBearerToken(configuration *TwinConfiguration) (*AccessToken, error) {
 	log.Printf("Attempting to acquire access token for resource: %s", configuration.ResourceId)
 

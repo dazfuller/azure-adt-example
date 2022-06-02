@@ -9,14 +9,28 @@ import (
 
 const ResourceId = "0b07f429-9f4b-4714-9392-cc5e8e80c8b0"
 
+// TwinConfiguration defines properties required for connecting to an Azure Digital
+// Twin instance.
 type TwinConfiguration struct {
-	URL          url.URL
-	ClientId     string
+	// URL defines the endpoint of the twin instance to connect to.
+	URL url.URL
+
+	// ClientId of the service principal account used for connecting to the Azure
+	// Digital Twin.
+	ClientId string
+
+	// ClientSecret of the service principal account used for connecting to the
+	// Azure Digital Twin.
 	ClientSecret string
-	TenantId     string
-	ResourceId   string
+
+	// TenantId (Directory ID) where the service principal authenticates to.
+	TenantId string
+
+	// ResourceId which defines the scope of the AccessToken when it's retrieved.
+	ResourceId string
 }
 
+// NewTwinConfiguration creates a new instance of TwinConfiguration
 func NewTwinConfiguration() *TwinConfiguration {
 	err := gotenv.Load()
 	if err != nil {
