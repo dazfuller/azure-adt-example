@@ -6,11 +6,8 @@ import (
 
 type Company struct {
 	models.GenericModel
-	Logo           string `json:"logo"`
-	Name           string `json:"name"`
-	PrimaryCssFile string `json:"primaryCssFile"`
-	ThemeCssFile   string `json:"themeCssFile"`
-	Motto          string `json:"motto"`
+	Logo string `json:"logo"`
+	Name string `json:"name"`
 }
 
 func (Company) Model() string {
