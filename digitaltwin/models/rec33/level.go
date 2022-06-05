@@ -1,6 +1,8 @@
 package rec33
 
-import "azure-adt-example/digitaltwin/models"
+import (
+	"azure-adt-example/digitaltwin/models"
+)
 
 type Level struct {
 	models.GenericModel
@@ -16,8 +18,4 @@ func (Level) Model() string {
 
 func (Level) Alias() string {
 	return models.GetModelAlias[Level]()
-}
-
-func (Level) ValidationClause() string {
-	return models.ModelValidationClause[Level]()
 }

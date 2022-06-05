@@ -17,7 +17,3 @@ func (Company) Model() string {
 func (Company) Alias() string {
 	return models.GetModelAlias[Company]()
 }
-
-func (Company) ValidationClause() string {
-	return models.ModelValidationClause[Company]()
-}

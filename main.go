@@ -4,6 +4,7 @@ import (
 	"azure-adt-example/azuread"
 	"azure-adt-example/digitaltwin"
 	"azure-adt-example/digitaltwin/models/rec33"
+	"azure-adt-example/digitaltwin/query"
 	"fmt"
 	"log"
 )
@@ -13,7 +14,7 @@ func main() {
 	client := digitaltwin.NewClient(config, nil)
 
 	from := rec33.Company{}
-	builder := digitaltwin.NewBuilder(from, false)
+	builder := query.NewBuilder(from, false)
 	var err error
 	if err = builder.AddJoin(from, rec33.Building{}, "owns", false); err != nil {
 		log.Fatal(err)
@@ -21,7 +22,13 @@ func main() {
 	if err = builder.AddJoin(rec33.Building{}, rec33.Level{}, "isPartOf", true); err != nil {
 		log.Fatal(err)
 	}
-	if err = builder.WhereId(from, "NHHG"); err != nil {
+	if err = builder.WhereId(from, "Elastacloud"); err != nil {
+		log.Fatal(err)
+	}
+	if err = builder.WhereStringFunction(rec33.Building{}, "Name", query.Contains, "Office"); err != nil {
+		log.Fatal(err)
+	}
+	if err = builder.WhereBooleanFunction(rec33.Level{}, "Name", query.IsDefined, nil); err != nil {
 		log.Fatal(err)
 	}
 

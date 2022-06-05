@@ -1,4 +1,4 @@
-package digitaltwin
+package query
 
 import (
 	"azure-adt-example/digitaltwin/models"
@@ -12,7 +12,7 @@ type Builder struct {
 	from         models.IModel
 	validateFrom bool
 	join         []Join
-	where        []string
+	where        []IWhere
 	project      []models.IModel
 }
 
@@ -32,7 +32,7 @@ func NewBuilder(from models.IModel, validateType bool) *Builder {
 		from:         from,
 		validateFrom: validateType,
 		join:         make([]Join, 0),
-		where:        make([]string, 0),
+		where:        make([]IWhere, 0),
 		project:      make([]models.IModel, 0),
 	}
 }
@@ -70,7 +70,43 @@ func (b *Builder) WhereId(source models.IModel, id string) error {
 		return fmt.Errorf("source %s is not part of the query", source.Alias())
 	}
 
-	b.where = append(b.where, fmt.Sprintf("%s.$dtId = '%s'", source.Alias(), id))
+	condition, err := NewWhereCondition(source, "ExternalId", Equals, id)
+	if err != nil {
+		return err
+	}
+
+	b.where = append(b.where, condition)
+
+	return nil
+}
+
+// WhereStringFunction applies a where condition to the query
+func (b *Builder) WhereStringFunction(source models.IModel, property string, function StringFunction, value string) error {
+	if !b.sourceExists(source) {
+		return fmt.Errorf("source %s is not part of the query", source.Alias())
+	}
+
+	whereFunction, err := NewWhereFunction[StringFunction](source, property, function, value)
+	if err != nil {
+		return err
+	}
+
+	b.where = append(b.where, whereFunction)
+
+	return nil
+}
+
+func (b *Builder) WhereBooleanFunction(source models.IModel, property string, function BooleanExpressionFunction, value any) error {
+	if !b.sourceExists(source) {
+		return fmt.Errorf("source %s is not part of the query", source.Alias())
+	}
+
+	whereFunction, err := NewWhereFunction(source, property, function, value)
+	if err != nil {
+		return err
+	}
+
+	b.where = append(b.where, whereFunction)
 
 	return nil
 }
@@ -132,18 +168,21 @@ func (b *Builder) CreateQuery() (string, error) {
 		}
 	}
 
-	whereStatements := b.where
+	whereStatements := make([]string, len(b.where))
+	for i, ws := range b.where {
+		whereStatements[i] = ws.GenerateClause()
+	}
 
 	fromStatement := fmt.Sprintf("digitaltwins %s", b.from.Alias())
 	if b.validateFrom {
-		whereStatements = append(whereStatements, b.from.ValidationClause())
+		whereStatements = append(whereStatements, ModelValidationClause(b.from).GenerateClause())
 	}
 
 	joinStatements := make([]string, len(b.join))
 	for i, j := range b.join {
 		joinStatements[i] = fmt.Sprintf("JOIN %s RELATED %s.%s", j.target.Alias(), j.source.Alias(), j.relationship)
 		if j.validateType {
-			whereStatements = append(whereStatements, j.target.ValidationClause())
+			whereStatements = append(whereStatements, ModelValidationClause(j.target).GenerateClause())
 		}
 	}
 

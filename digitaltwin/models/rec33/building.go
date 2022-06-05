@@ -1,6 +1,8 @@
 package rec33
 
-import "azure-adt-example/digitaltwin/models"
+import (
+	"azure-adt-example/digitaltwin/models"
+)
 
 type Building struct {
 	models.GenericModel
@@ -13,8 +15,4 @@ func (Building) Model() string {
 
 func (Building) Alias() string {
 	return models.GetModelAlias[Building]()
-}
-
-func (Building) ValidationClause() string {
-	return models.ModelValidationClause[Building]()
 }
