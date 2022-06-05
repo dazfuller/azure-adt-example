@@ -65,12 +65,41 @@ func (b *Builder) AddJoin(source models.IModel, target models.IModel, relationsh
 
 // WhereId defines a simple where condition that filters results to only those where a
 // twin's id matches the given value.
-func (b *Builder) WhereId(source models.IModel, id string) error {
+func (b *Builder) WhereId(source models.IModel, id ...string) error {
 	if !b.sourceExists(source) {
 		return fmt.Errorf("source %s is not part of the query", source.Alias())
 	}
 
-	condition, err := NewWhereCondition(source, "ExternalId", Equals, id)
+	var condition *WhereCondition
+	var err error
+
+	if len(id) == 0 {
+		return fmt.Errorf("at least one id must be specified")
+	} else if len(id) == 1 {
+		condition, err = NewWhereCondition(source, "ExternalId", Equals, id)
+	} else {
+		idsAsAny := make([]any, len(id))
+		for i, v := range id {
+			idsAsAny[i] = v
+		}
+		condition, err = NewWhereCondition(source, "ExternalId", In, idsAsAny...)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	b.where = append(b.where, condition)
+
+	return nil
+}
+
+func (b *Builder) WhereClause(source models.IModel, property string, operator Operator, value ...any) error {
+	if !b.sourceExists(source) {
+		return fmt.Errorf("source %s is not part of the query", source.Alias())
+	}
+
+	condition, err := NewWhereCondition(source, property, operator, value...)
 	if err != nil {
 		return err
 	}
@@ -102,6 +131,23 @@ func (b *Builder) WhereBooleanFunction(source models.IModel, property string, fu
 	}
 
 	whereFunction, err := NewWhereFunction(source, property, function, value)
+	if err != nil {
+		return err
+	}
+
+	b.where = append(b.where, whereFunction)
+
+	return nil
+}
+
+func (b *Builder) WhereLogicalOperator(operator LogicalOperator, conditions ...IWhere) error {
+	for _, c := range conditions {
+		if c.GetSource() != nil && !b.sourceExists(c.GetSource()) {
+			return fmt.Errorf("source %s is not part of the query", c.GetSource().Alias())
+		}
+	}
+
+	whereFunction, err := NewWhereLogical(operator, conditions...)
 	if err != nil {
 		return err
 	}

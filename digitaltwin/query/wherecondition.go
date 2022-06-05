@@ -4,6 +4,7 @@ import (
 	"azure-adt-example/digitaltwin/models"
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 type WhereCondition struct {
@@ -11,10 +12,10 @@ type WhereCondition struct {
 	property         string
 	propertyJsonName string
 	operator         Operator
-	value            any
+	value            []any
 }
 
-func NewWhereCondition(source models.IModel, property string, operator Operator, value any) (*WhereCondition, error) {
+func NewWhereCondition(source models.IModel, property string, operator Operator, value ...any) (*WhereCondition, error) {
 	jsonPropertyName, err := getPropertyJsonName(source, property)
 	if err != nil {
 		return nil, err
@@ -22,6 +23,14 @@ func NewWhereCondition(source models.IModel, property string, operator Operator,
 
 	if !operator.IsValid() {
 		return nil, fmt.Errorf("operator specified is not valid")
+	}
+
+	if len(value) == 0 {
+		return nil, fmt.Errorf("at least one value must be provided")
+	}
+
+	if (operator == In || operator == NotIn) && len(value) > 100 {
+		return nil, fmt.Errorf("IN and NIN operators do not support more than 100 values as part of the query")
 	}
 
 	return &WhereCondition{
@@ -36,14 +45,31 @@ func NewWhereCondition(source models.IModel, property string, operator Operator,
 func (wc *WhereCondition) GenerateClause() string {
 	var value string
 
-	switch wc.value.(type) {
-	case int, float32, float64:
-		value = fmt.Sprintf("%d", wc.value)
-	case bool:
-		value = strconv.FormatBool(wc.value.(bool))
+	switch wc.operator {
+	case In, NotIn:
+		valueCollection := make([]string, len(wc.value))
+		for i, v := range wc.value {
+			valueCollection[i] = typeToString(v)
+		}
+		value = fmt.Sprintf("[%s]", strings.Join(valueCollection, ", "))
 	default:
-		value = fmt.Sprintf("'%s'", wc.value)
+		value = typeToString(wc.value[0])
 	}
 
 	return fmt.Sprintf("%s.%s %s %s", wc.source.Alias(), wc.propertyJsonName, wc.operator, value)
+}
+
+func (wc *WhereCondition) GetSource() models.IModel {
+	return wc.source
+}
+
+func typeToString(value any) string {
+	switch value.(type) {
+	case int, float32, float64:
+		return fmt.Sprintf("%d", value)
+	case bool:
+		return strconv.FormatBool(value.(bool))
+	default:
+		return fmt.Sprintf("'%s'", value)
+	}
 }

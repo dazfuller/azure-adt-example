@@ -66,6 +66,10 @@ func (wf *WhereFunction[F]) GenerateClause() string {
 	return expression
 }
 
+func (wf *WhereFunction[F]) GetSource() models.IModel {
+	return wf.source
+}
+
 func ModelValidationClause(source models.IModel) *WhereFunction[BooleanExpressionFunction] {
 	wf, err := NewWhereFunction(source, "ExternalId", IsOfModel, false)
 	if err != nil {

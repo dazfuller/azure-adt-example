@@ -9,6 +9,7 @@ import (
 
 type IWhere interface {
 	GenerateClause() string
+	GetSource() models.IModel
 }
 
 func getPropertyJsonName(source models.IModel, property string) (string, error) {
