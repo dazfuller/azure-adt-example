@@ -34,7 +34,7 @@ type TwinConfiguration struct {
 func NewTwinConfiguration() *TwinConfiguration {
 	err := gotenv.Load()
 	if err != nil {
-		log.Fatal("Unable to load environment variables", err)
+		log.Printf("Unable to load environment variables: %v", err)
 	}
 
 	twinUrl, err := url.Parse(getEnvironmentValue("TWIN_URL"))
