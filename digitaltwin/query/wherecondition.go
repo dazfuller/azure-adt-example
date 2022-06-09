@@ -25,7 +25,7 @@ func NewWhereCondition(source models.IModel, property string, operator Operator,
 		return nil, fmt.Errorf("operator specified is not valid")
 	}
 
-	if len(value) == 0 {
+	if len(value) == 0 || (len(value) == 1 && value[0] == nil) {
 		return nil, fmt.Errorf("at least one value must be provided")
 	}
 
@@ -65,8 +65,12 @@ func (wc *WhereCondition) GetSource() models.IModel {
 
 func typeToString(value any) string {
 	switch value.(type) {
-	case int, float32, float64:
+	case int:
 		return fmt.Sprintf("%d", value)
+	case float32:
+		return fmt.Sprintf("%f", value)
+	case float64:
+		return strconv.FormatFloat(value.(float64), 'f', 8, 64)
 	case bool:
 		return strconv.FormatBool(value.(bool))
 	default:
