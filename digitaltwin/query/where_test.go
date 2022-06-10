@@ -26,30 +26,28 @@ func (tm TestModel) Alias() string {
 func TestGetPropertyName_WithValidProperty(t *testing.T) {
 	jsonName, err := getPropertyJsonName(TestModel{}, "ExampleField")
 	if err != nil {
-		t.Log("Error should be nil", err)
-		t.Fail()
+		t.Logf("Error should be nil, got %s", err)
+		t.FailNow()
 	}
 
 	expectedName := "example_field"
 
 	if jsonName != expectedName {
-		t.Logf("Expected '%s' but got '%s'", expectedName, jsonName)
-		t.Fail()
+		t.Errorf("Expected '%s' but got '%s'", expectedName, jsonName)
 	}
 }
 
 func TestGetPropertyName_WithValidPropertyWithOmitSet(t *testing.T) {
 	jsonName, err := getPropertyJsonName(TestModel{}, "ExtraMappingProperties")
 	if err != nil {
-		t.Log("Error should be nil", err)
-		t.Fail()
+		t.Logf("Error should be nil, got %s", err)
+		t.FailNow()
 	}
 
 	expectedName := "ex_mapping"
 
 	if jsonName != expectedName {
-		t.Logf("Expected '%s' but got '%s'", expectedName, jsonName)
-		t.Fail()
+		t.Errorf("Expected '%s' but got '%s'", expectedName, jsonName)
 	}
 }
 
@@ -57,14 +55,13 @@ func TestGetPropertyName_WithInvalidPropertyName(t *testing.T) {
 	_, err := getPropertyJsonName(TestModel{}, "NotValid")
 	if err == nil {
 		t.Log("Expected to get an error, but got nil")
-		t.Fail()
+		t.FailNow()
 	}
 
 	expectedErrorString := "field NotValid does not exist"
 
 	if !strings.Contains(err.Error(), expectedErrorString) {
-		t.Logf("Expected error to contain '%s', but got: %v", expectedErrorString, err)
-		t.Fail()
+		t.Errorf("Expected error to contain '%s', but got: %v", expectedErrorString, err)
 	}
 }
 
@@ -72,13 +69,12 @@ func TestGetPropertyName_PropertyWithMissingJsonMapping(t *testing.T) {
 	_, err := getPropertyJsonName(TestModel{}, "NoMapping")
 	if err == nil {
 		t.Log("Expected to get an error, but got nil")
-		t.Fail()
+		t.FailNow()
 	}
 
 	expectedErrorString := "field query.TestModel.NoMapping does not have a json mapping property"
 
 	if !strings.Contains(err.Error(), expectedErrorString) {
-		t.Logf("Expected error to contain '%s', but got: %v", expectedErrorString, err)
-		t.Fail()
+		t.Errorf("Expected error to contain '%s', but got: %v", expectedErrorString, err)
 	}
 }

@@ -15,20 +15,15 @@ func TestNewWhereCondition_SimpleCreation(t *testing.T) {
 	}
 
 	if reflect.TypeOf(cond.source) != reflect.TypeOf(rec33.Company{}) {
-		t.Logf("Expected source to be of type rec33.Company, but got %T", cond.source)
-		t.Fail()
+		t.Errorf("Expected source to be of type rec33.Company, but got %T", cond.source)
 	} else if cond.property != "Name" {
-		t.Logf("Expected property to be 'Name', but got %s", cond.property)
-		t.Fail()
+		t.Errorf("Expected property to be 'Name', but got %s", cond.property)
 	} else if cond.propertyJsonName != "name" {
-		t.Logf("Expected JSON property name to be 'name', but got %s", cond.propertyJsonName)
-		t.Fail()
+		t.Errorf("Expected JSON property name to be 'name', but got %s", cond.propertyJsonName)
 	} else if cond.operator != Equals {
-		t.Logf("Expected operator to be '==', but got %s", cond.operator)
-		t.Fail()
+		t.Errorf("Expected operator to be '==', but got %s", cond.operator)
 	} else if len(cond.value) != 1 || cond.value[0] != "Test" {
-		t.Logf("Expected value to have length of 1 and value 'Test' but got length %d and value %s", len(cond.value), cond.value[0])
-		t.Fail()
+		t.Errorf("Expected value to have length of 1 and value 'Test' but got length %d and value %s", len(cond.value), cond.value[0])
 	}
 }
 
@@ -42,8 +37,7 @@ func TestNewWhereCondition_InvalidPropertyName(t *testing.T) {
 	expectedErrorString := "field Invalid does not exist"
 
 	if !strings.Contains(err.Error(), expectedErrorString) {
-		t.Logf("Expected error to contain '%s', but got: %v", expectedErrorString, err)
-		t.Fail()
+		t.Errorf("Expected error to contain '%s', but got: %v", expectedErrorString, err)
 	}
 }
 
@@ -57,8 +51,7 @@ func TestNewWhereCondition_WithInvalidOperator(t *testing.T) {
 	expectedErrorString := "operator specified is not valid"
 
 	if err.Error() != expectedErrorString {
-		t.Logf("Expected error to be '%s', but got: %v", expectedErrorString, err)
-		t.Fail()
+		t.Errorf("Expected error to be '%s', but got: %v", expectedErrorString, err)
 	}
 }
 
@@ -72,8 +65,7 @@ func TestNewWhereCondition_NoValues(t *testing.T) {
 	expectedErrorString := "at least one value must be provided"
 
 	if err.Error() != expectedErrorString {
-		t.Logf("Expected error to be '%s', but got: %v", expectedErrorString, err)
-		t.Fail()
+		t.Errorf("Expected error to be '%s', but got: %v", expectedErrorString, err)
 	}
 }
 
@@ -87,8 +79,25 @@ func TestNewWhereCondition_NilValue(t *testing.T) {
 	expectedErrorString := "at least one value must be provided"
 
 	if err.Error() != expectedErrorString {
-		t.Logf("Expected error to be '%s', but got: %v", expectedErrorString, err)
-		t.Fail()
+		t.Errorf("Expected error to be '%s', but got: %v", expectedErrorString, err)
+	}
+}
+
+func TestNewWhereCondition_InvalidLength(t *testing.T) {
+	tests := []struct {
+		operator Operator
+	}{
+		{In},
+		{NotIn},
+	}
+
+	for _, test := range tests {
+		_, err := NewWhereCondition(rec33.Company{}, "Name", test.operator, make([]any, 101)...)
+		if err == nil {
+			t.Errorf("Expected an error for %s but got nil", test.operator)
+		} else if err.Error() != "IN and NIN operators do not support more than 100 values as part of the query" {
+			t.Errorf("Invalid error recieved, got %s", err)
+		}
 	}
 }
 
@@ -102,43 +111,54 @@ func TestWhereCondition_GetSource(t *testing.T) {
 	expected := reflect.TypeOf(rec33.Company{})
 
 	if reflect.TypeOf(cond.GetSource()) != expected {
-		t.Logf("Expected type of rec33.Company, but got %T", cond.GetSource())
-		t.Fail()
+		t.Errorf("Expected type of rec33.Company, but got %T", cond.GetSource())
 	}
 }
 
-func TestWhereCondition_typeToString_Int(t *testing.T) {
-	result := typeToString(73)
+func TestWhereCondition_typeToString(t *testing.T) {
+	tests := []struct {
+		input    any
+		expected string
+	}{
+		{73, "73"},
+		{float32(123.32), "123.320000"},
+		{123.32, "123.32000000"},
+		{false, "false"},
+		{"testing", "'testing'"},
+	}
 
-	if result != "73" {
-		t.Logf("Expected 73, but got %s", result)
-		t.Fail()
+	for _, test := range tests {
+		actual := typeToString(test.input)
+		if actual != test.expected {
+			t.Errorf("Expected %s, but got %s", test.expected, actual)
+		}
 	}
 }
 
-func TestWhereCondition_typeToString_Float32(t *testing.T) {
-	result := typeToString(float32(123.32))
-
-	if result != "123.320000" {
-		t.Logf("Expected 123.320000, but got %s", result)
-		t.Fail()
+func TestWhereCondition_GenerateClause(t *testing.T) {
+	tests := []struct {
+		field    string
+		operator Operator
+		value    []any
+		expected string
+	}{
+		{"ExternalId", Equals, []any{"Test"}, "company.$dtId = 'Test'"},
+		{"ExternalId", NotEquals, []any{"Test"}, "company.$dtId != 'Test'"},
+		{"Name", LessThan, []any{12}, "company.name < 12"},
+		{"Name", GreaterThan, []any{99}, "company.name > 99"},
+		{"Name", LessThanOrEqual, []any{12}, "company.name <= 12"},
+		{"Name", GreaterThanOrEqual, []any{99}, "company.name >= 99"},
+		{"ExternalId", In, []any{"Comp1", "Comp2"}, "company.$dtId IN ['Comp1', 'Comp2']"},
+		{"ExternalId", NotIn, []any{"Comp1", "Comp2"}, "company.$dtId NIN ['Comp1', 'Comp2']"},
 	}
-}
 
-func TestWhereCondition_typeToString_Float64(t *testing.T) {
-	result := typeToString(123.32)
+	for _, test := range tests {
+		cond, _ := NewWhereCondition(rec33.Company{}, test.field, test.operator, test.value...)
 
-	if result != "123.32000000" {
-		t.Logf("Expected 123.32000000, but got %s", result)
-		t.Fail()
-	}
-}
+		actualClause := cond.GenerateClause()
 
-func TestWhereCondition_typeToString_Bool(t *testing.T) {
-	result := typeToString(false)
-
-	if result != "false" {
-		t.Logf("Expected false, but got %s", result)
-		t.Fail()
+		if test.expected != actualClause {
+			t.Errorf("Expected \"%s\", but got \"%s\"", test.expected, actualClause)
+		}
 	}
 }
