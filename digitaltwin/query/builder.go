@@ -12,14 +12,14 @@ type Builder struct {
 	from          models.IModel
 	validateFrom  bool
 	validateExact bool
-	join          []Join
+	join          []join
 	where         []IWhere
 	project       []models.IModel
 }
 
-// Join represents a join condition, defining the twin being joined from and to, it's
+// join represents a join condition, defining the twin being joined from and to, it's
 // relationship and if the target type requires model verification.
-type Join struct {
+type join struct {
 	source        models.IModel
 	target        models.IModel
 	relationship  string
@@ -34,7 +34,7 @@ func NewBuilder(from models.IModel, validateType bool, validateExact bool) *Buil
 		from:          from,
 		validateFrom:  validateType,
 		validateExact: validateExact,
-		join:          make([]Join, 0),
+		join:          make([]join, 0),
 		where:         make([]IWhere, 0),
 		project:       make([]models.IModel, 0),
 	}
@@ -54,7 +54,7 @@ func (b *Builder) AddJoin(source models.IModel, target models.IModel, relationsh
 		return fmt.Errorf("a target of alias '%s' already exists", target.Alias())
 	}
 
-	join := Join{
+	join := join{
 		source:        source,
 		target:        target,
 		relationship:  relationship,
