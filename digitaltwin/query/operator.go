@@ -23,6 +23,14 @@ func (o Operator) String() string {
 	return operators[o-1]
 }
 
+func (o Operator) ToName() string {
+	operators := []string{"Equals", "NotEquals", "LessThan", "GreaterThan", "LessThanOrEqual", "GreaterThanOrEqual", "In", "NotIn"}
+	if !o.IsValid() {
+		log.Fatalf("%d is not a valid operator type", o)
+	}
+	return operators[o-1]
+}
+
 func (o Operator) IsValid() bool {
 	switch o {
 	case Equals, NotEquals, LessThan, GreaterThan, LessThanOrEqual, GreaterThanOrEqual, In, NotIn:
