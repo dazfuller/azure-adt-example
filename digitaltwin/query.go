@@ -227,7 +227,7 @@ func executeCompletedBuilder(client *Client, builder *query.Builder) (*QueryResu
 		return nil, err
 	}
 
-	queryData, err := queryTwin(client, generatedQuery)
+	queryData, err := queryTwin(client, *generatedQuery)
 	if err != nil {
 		return nil, err
 	}
