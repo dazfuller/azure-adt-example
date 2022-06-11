@@ -117,21 +117,24 @@ func TestWhereCondition_GetSource(t *testing.T) {
 
 func TestWhereCondition_typeToString(t *testing.T) {
 	tests := []struct {
+		name     string
 		input    any
 		expected string
 	}{
-		{73, "73"},
-		{float32(123.32), "123.320000"},
-		{123.32, "123.32000000"},
-		{false, "false"},
-		{"testing", "'testing'"},
+		{"Int", 73, "73"},
+		{"Float32", float32(123.32), "123.320000"},
+		{"Float64", 123.32, "123.32000000"},
+		{"Boolean", false, "false"},
+		{"String", "testing", "'testing'"},
 	}
 
 	for _, test := range tests {
-		actual := typeToString(test.input)
-		if actual != test.expected {
-			t.Errorf("Expected %s, but got %s", test.expected, actual)
-		}
+		t.Run(test.name, func(t *testing.T) {
+			actual := typeToString(test.input)
+			if actual != test.expected {
+				t.Errorf("Expected %s, but got %s", test.expected, actual)
+			}
+		})
 	}
 }
 
@@ -153,12 +156,14 @@ func TestWhereCondition_GenerateClause(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		cond, _ := NewWhereCondition(rec33.Company{}, test.field, test.operator, test.value...)
+		t.Run(test.operator.ToName(), func(t *testing.T) {
+			cond, _ := NewWhereCondition(rec33.Company{}, test.field, test.operator, test.value...)
 
-		actualClause := cond.GenerateClause()
+			actualClause := cond.GenerateClause()
 
-		if test.expected != actualClause {
-			t.Errorf("Expected \"%s\", but got \"%s\"", test.expected, actualClause)
-		}
+			if test.expected != actualClause {
+				t.Errorf("Expected \"%s\", but got \"%s\"", test.expected, actualClause)
+			}
+		})
 	}
 }
