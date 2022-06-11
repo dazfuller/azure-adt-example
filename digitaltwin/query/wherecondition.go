@@ -3,7 +3,6 @@ package query
 import (
 	"azure-adt-example/digitaltwin/models"
 	"fmt"
-	"strconv"
 	"strings"
 )
 
@@ -61,19 +60,4 @@ func (wc *WhereCondition) GenerateClause() string {
 
 func (wc *WhereCondition) GetSource() models.IModel {
 	return wc.source
-}
-
-func typeToString(value any) string {
-	switch value.(type) {
-	case int:
-		return fmt.Sprintf("%d", value)
-	case float32:
-		return fmt.Sprintf("%f", value)
-	case float64:
-		return strconv.FormatFloat(value.(float64), 'f', 8, 64)
-	case bool:
-		return strconv.FormatBool(value.(bool))
-	default:
-		return fmt.Sprintf("'%s'", value)
-	}
 }

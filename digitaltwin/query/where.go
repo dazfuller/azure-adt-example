@@ -4,6 +4,7 @@ import (
 	"azure-adt-example/digitaltwin/models"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 )
 
@@ -27,4 +28,22 @@ func getPropertyJsonName(source models.IModel, property string) (string, error) 
 
 	jsonPropertyName := strings.Split(jsonName, ",")[0]
 	return jsonPropertyName, nil
+}
+
+func typeToString(value any) string {
+	if value == nil {
+		return "''"
+	}
+	switch value.(type) {
+	case int:
+		return fmt.Sprintf("%d", value)
+	case float32:
+		return fmt.Sprintf("%f", value)
+	case float64:
+		return strconv.FormatFloat(value.(float64), 'f', 8, 64)
+	case bool:
+		return strconv.FormatBool(value.(bool))
+	default:
+		return fmt.Sprintf("'%s'", value)
+	}
 }

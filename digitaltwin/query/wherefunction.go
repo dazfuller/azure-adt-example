@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"strings"
 )
 
 type WhereFunction[F Function] struct {
@@ -22,7 +23,7 @@ func NewWhereFunction[F Function](source models.IModel, property string, functio
 	}
 
 	if !function.IsValid() {
-		return nil, fmt.Errorf("function %v specified is not valid", function)
+		return nil, fmt.Errorf("function specified is not valid")
 	}
 
 	return &WhereFunction[F]{
@@ -42,7 +43,11 @@ func (wf *WhereFunction[F]) GenerateClause() string {
 	beName := reflect.TypeOf(*new(BooleanExpressionFunction)).Name()
 	switch v {
 	case sfName:
-		expression = fmt.Sprintf("%s(%s.%s, '%s')", wf.function, wf.source.Alias(), wf.propertyJsonName, wf.value)
+		clauseValue := typeToString(wf.value)
+		if !strings.HasPrefix(clauseValue, "'") {
+			clauseValue = fmt.Sprintf("'%s'", clauseValue)
+		}
+		expression = fmt.Sprintf("%s(%s.%s, %s)", wf.function, wf.source.Alias(), wf.propertyJsonName, clauseValue)
 	case beName:
 		switch x := BooleanExpressionFunction(v1.Int()); x {
 		case IsOfModel:
@@ -70,10 +75,10 @@ func (wf *WhereFunction[F]) GetSource() models.IModel {
 	return wf.source
 }
 
-func ModelValidationClause(source models.IModel) *WhereFunction[BooleanExpressionFunction] {
-	wf, err := NewWhereFunction(source, "ExternalId", IsOfModel, false)
+func ModelValidationClause(source models.IModel, exact bool) (*WhereFunction[BooleanExpressionFunction], error) {
+	wf, err := NewWhereFunction(source, "ExternalId", IsOfModel, exact)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
-	return wf
+	return wf, nil
 }

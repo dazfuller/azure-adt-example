@@ -78,3 +78,27 @@ func TestGetPropertyName_PropertyWithMissingJsonMapping(t *testing.T) {
 		t.Errorf("Expected error to contain '%s', but got: %v", expectedErrorString, err)
 	}
 }
+
+func TestWhere_typeToString(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    any
+		expected string
+	}{
+		{"Nil", nil, "''"},
+		{"Int", 73, "73"},
+		{"Float32", float32(123.32), "123.320000"},
+		{"Float64", 123.32, "123.32000000"},
+		{"Boolean", false, "false"},
+		{"String", "testing", "'testing'"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			actual := typeToString(test.input)
+			if actual != test.expected {
+				t.Errorf("Expected %s, but got %s", test.expected, actual)
+			}
+		})
+	}
+}

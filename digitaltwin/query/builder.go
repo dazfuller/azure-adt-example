@@ -9,36 +9,39 @@ import (
 // Builder defines a type for generating Azure Digital Twin SQL queries based on models.IModel
 // types.
 type Builder struct {
-	from         models.IModel
-	validateFrom bool
-	join         []Join
-	where        []IWhere
-	project      []models.IModel
+	from          models.IModel
+	validateFrom  bool
+	validateExact bool
+	join          []Join
+	where         []IWhere
+	project       []models.IModel
 }
 
 // Join represents a join condition, defining the twin being joined from and to, it's
 // relationship and if the target type requires model verification.
 type Join struct {
-	source       models.IModel
-	target       models.IModel
-	relationship string
-	validateType bool
+	source        models.IModel
+	target        models.IModel
+	relationship  string
+	validateType  bool
+	validateExact bool
 }
 
 // NewBuilder creates a new Builder type based on a required source twin and sets if that twin
 // requires model type verification.
-func NewBuilder(from models.IModel, validateType bool) *Builder {
+func NewBuilder(from models.IModel, validateType bool, validateExact bool) *Builder {
 	return &Builder{
-		from:         from,
-		validateFrom: validateType,
-		join:         make([]Join, 0),
-		where:        make([]IWhere, 0),
-		project:      make([]models.IModel, 0),
+		from:          from,
+		validateFrom:  validateType,
+		validateExact: validateExact,
+		join:          make([]Join, 0),
+		where:         make([]IWhere, 0),
+		project:       make([]models.IModel, 0),
 	}
 }
 
 // AddJoin adds a new join condition to the Builder. Joins can only be specified once.
-func (b *Builder) AddJoin(source models.IModel, target models.IModel, relationship string, validateType bool) error {
+func (b *Builder) AddJoin(source models.IModel, target models.IModel, relationship string, validateType bool, validateExact bool) error {
 	exists := false
 	for _, j := range b.join {
 		if target.Alias() == j.target.Alias() {
@@ -52,10 +55,11 @@ func (b *Builder) AddJoin(source models.IModel, target models.IModel, relationsh
 	}
 
 	join := Join{
-		source:       source,
-		target:       target,
-		relationship: relationship,
-		validateType: validateType,
+		source:        source,
+		target:        target,
+		relationship:  relationship,
+		validateType:  validateType,
+		validateExact: validateExact,
 	}
 
 	b.join = append(b.join, join)
@@ -204,7 +208,7 @@ func (b *Builder) projectionExists(source models.IModel) bool {
 
 // CreateQuery takes the properties assigned to the Builder and generates a valid
 // Azure Digital Twin SQL query.
-func (b *Builder) CreateQuery() (string, error) {
+func (b *Builder) CreateQuery() (*string, error) {
 	selectTwins := make([]string, len(b.project))
 	if len(b.project) == 0 {
 		selectTwins = append(selectTwins, b.from.Alias())
@@ -221,14 +225,22 @@ func (b *Builder) CreateQuery() (string, error) {
 
 	fromStatement := fmt.Sprintf("digitaltwins %s", b.from.Alias())
 	if b.validateFrom {
-		whereStatements = append(whereStatements, ModelValidationClause(b.from).GenerateClause())
+		validationClause, err := ModelValidationClause(b.from, b.validateExact)
+		if err != nil {
+			return nil, err
+		}
+		whereStatements = append(whereStatements, validationClause.GenerateClause())
 	}
 
 	joinStatements := make([]string, len(b.join))
 	for i, j := range b.join {
 		joinStatements[i] = fmt.Sprintf("JOIN %s RELATED %s.%s", j.target.Alias(), j.source.Alias(), j.relationship)
 		if j.validateType {
-			whereStatements = append(whereStatements, ModelValidationClause(j.target).GenerateClause())
+			validationClause, err := ModelValidationClause(j.target, j.validateExact)
+			if err != nil {
+				return nil, err
+			}
+			whereStatements = append(whereStatements, validationClause.GenerateClause())
 		}
 	}
 
@@ -239,5 +251,7 @@ func (b *Builder) CreateQuery() (string, error) {
 		whereStatement = fmt.Sprintf("WHERE %s", strings.Join(whereStatements, " AND "))
 	}
 
-	return strings.TrimSpace(fmt.Sprintf("SELECT %s FROM %s %s %s", strings.Join(selectTwins, ", "), fromStatement, joinStatement, whereStatement)), nil
+	generatedStatement := strings.TrimSpace(fmt.Sprintf("SELECT %s FROM %s %s %s", strings.Join(selectTwins, ", "), fromStatement, joinStatement, whereStatement))
+
+	return &generatedStatement, nil
 }
