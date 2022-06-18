@@ -75,10 +75,7 @@ func (wf *WhereFunction[F]) GetSource() models.IModel {
 	return wf.source
 }
 
-func ModelValidationClause(source models.IModel, exact bool) (*WhereFunction[BooleanExpressionFunction], error) {
-	wf, err := NewWhereFunction(source, "ExternalId", IsOfModel, exact)
-	if err != nil {
-		return nil, err
-	}
-	return wf, nil
+func ModelValidationClause(source models.IModel, exact bool) *WhereFunction[BooleanExpressionFunction] {
+	wf, _ := NewWhereFunction(source, "ExternalId", IsOfModel, exact)
+	return wf
 }

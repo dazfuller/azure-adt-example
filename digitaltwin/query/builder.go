@@ -80,7 +80,7 @@ func (b *Builder) WhereId(source models.IModel, id ...string) error {
 	if len(id) == 0 {
 		return fmt.Errorf("at least one id must be specified")
 	} else if len(id) == 1 {
-		condition, err = NewWhereCondition(source, "ExternalId", Equals, id)
+		condition, err = NewWhereCondition(source, "ExternalId", Equals, id[0])
 	} else {
 		idsAsAny := make([]any, len(id))
 		for i, v := range id {
@@ -225,10 +225,7 @@ func (b *Builder) CreateQuery() (*string, error) {
 
 	fromStatement := fmt.Sprintf("digitaltwins %s", b.from.Alias())
 	if b.validateFrom {
-		validationClause, err := ModelValidationClause(b.from, b.validateExact)
-		if err != nil {
-			return nil, err
-		}
+		validationClause := ModelValidationClause(b.from, b.validateExact)
 		whereStatements = append(whereStatements, validationClause.GenerateClause())
 	}
 
@@ -236,10 +233,7 @@ func (b *Builder) CreateQuery() (*string, error) {
 	for i, j := range b.join {
 		joinStatements[i] = fmt.Sprintf("JOIN %s RELATED %s.%s", j.target.Alias(), j.source.Alias(), j.relationship)
 		if j.validateType {
-			validationClause, err := ModelValidationClause(j.target, j.validateExact)
-			if err != nil {
-				return nil, err
-			}
+			validationClause := ModelValidationClause(j.target, j.validateExact)
 			whereStatements = append(whereStatements, validationClause.GenerateClause())
 		}
 	}
@@ -251,7 +245,15 @@ func (b *Builder) CreateQuery() (*string, error) {
 		whereStatement = fmt.Sprintf("WHERE %s", strings.Join(whereStatements, " AND "))
 	}
 
-	generatedStatement := strings.TrimSpace(fmt.Sprintf("SELECT %s FROM %s %s %s", strings.Join(selectTwins, ", "), fromStatement, joinStatement, whereStatement))
+	finalSelect := fmt.Sprintf("SELECT %s", strings.Join(selectTwins, ", "))
+	var finalFrom string
+	if joinStatement == "" {
+		finalFrom = fmt.Sprintf("FROM %s", fromStatement)
+	} else {
+		finalFrom = fmt.Sprintf("FROM %s %s", fromStatement, joinStatement)
+	}
+
+	generatedStatement := strings.TrimSpace(strings.Join([]string{finalSelect, finalFrom, whereStatement}, " "))
 
 	return &generatedStatement, nil
 }

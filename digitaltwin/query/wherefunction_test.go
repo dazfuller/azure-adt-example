@@ -76,11 +76,7 @@ func TestModelValidationClause(t *testing.T) {
 		value:            false,
 	}
 
-	f, err := ModelValidationClause(model, false)
-	if err != nil {
-		t.Logf("Expected error to be nil, but got %v", err)
-		t.FailNow()
-	}
+	f := ModelValidationClause(model, false)
 
 	if reflect.TypeOf(f.source) != reflect.TypeOf(expected.source) ||
 		f.property != expected.property ||
