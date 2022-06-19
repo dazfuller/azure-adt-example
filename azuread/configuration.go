@@ -7,7 +7,10 @@ import (
 	"os"
 )
 
-const ResourceId = "0b07f429-9f4b-4714-9392-cc5e8e80c8b0"
+const (
+	ResourceId   = "0b07f429-9f4b-4714-9392-cc5e8e80c8b0"
+	AuthorityUrl = "https://login.microsoftonline.com"
+)
 
 // TwinConfiguration defines properties required for connecting to an Azure Digital
 // Twin instance.
@@ -28,6 +31,9 @@ type TwinConfiguration struct {
 
 	// ResourceId which defines the scope of the AccessToken when it's retrieved.
 	ResourceId string
+
+	// AuthorityUrl defines the base url for obtaining an access token (e.g. https://login.microsoftonline.com)
+	AuthorityUrl url.URL
 }
 
 // NewTwinConfiguration creates a new instance of TwinConfiguration
@@ -42,12 +48,15 @@ func NewTwinConfiguration() *TwinConfiguration {
 		log.Fatal("Invalid Twin URL in environment variable TWIN_URL")
 	}
 
+	authority, _ := url.Parse(AuthorityUrl)
+
 	return &TwinConfiguration{
 		*twinUrl,
 		getEnvironmentValue("TWIN_CLIENT_ID"),
 		getEnvironmentValue("TWIN_CLIENT_SECRET"),
 		getEnvironmentValue("TWIN_TENANT_ID"),
 		ResourceId,
+		*authority,
 	}
 }
 

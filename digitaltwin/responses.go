@@ -16,6 +16,8 @@ type ErrorDetail struct {
 	Message string `json:"message"`
 }
 
+type digitalTwinResults []map[string]json.RawMessage
+
 // QueryResultGeneric defines a successful response message from Azure Digital Twin.
 // The response includes a ContinuationToken for paging results. The Results are
 // left as their JSON message values so that each may be Unmarshalled to the correct
@@ -23,10 +25,14 @@ type ErrorDetail struct {
 type QueryResultGeneric struct {
 	// Results contains an array of JSON objects where each object represents a specific
 	// models.IModel type.
-	Results []map[string]json.RawMessage `json:"value"`
+	Results digitalTwinResults `json:"value"`
 
 	// ContinuationToken is the value required to be sent back to the query API to
 	// retrieve the next page of results. If this is empty then no further results
 	// are available.
 	ContinuationToken string `json:"continuationToken"`
+}
+
+func (q *QueryResultGeneric) HasContinuationToken() bool {
+	return len(q.ContinuationToken) != 0
 }

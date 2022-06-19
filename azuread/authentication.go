@@ -25,7 +25,7 @@ type AccessToken struct {
 func GetBearerToken(configuration *TwinConfiguration) (*AccessToken, error) {
 	log.Printf("Attempting to acquire access token for resource: %s", configuration.ResourceId)
 
-	authenticationUrl := fmt.Sprintf("https://login.microsoftonline.com/%s/oauth2/token", configuration.TenantId)
+	authenticationUrl := fmt.Sprintf("%s/%s/oauth2/token", configuration.AuthorityUrl.String(), configuration.TenantId)
 
 	data := url.Values{}
 	data.Add("client_id", configuration.ClientId)
@@ -37,6 +37,8 @@ func GetBearerToken(configuration *TwinConfiguration) (*AccessToken, error) {
 	resp, err := client.PostForm(authenticationUrl, data)
 	if err != nil {
 		return nil, fmt.Errorf("unable to obtain access token: %v", err)
+	} else if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("received error response from authority url: %d", resp.StatusCode)
 	}
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
