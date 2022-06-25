@@ -128,6 +128,91 @@ func TestClient_queryTwin_failedAuth(t *testing.T) {
 	}
 }
 
+func TestClient_queryTwin_ContinuationToken(t *testing.T) {
+	var queryBody string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.RequestURI == "/tenant1/oauth2/token" && req.Method == "POST" {
+			authResponse := getValidAuthenticationResponse()
+			fmt.Fprintf(w, authResponse)
+		} else if strings.HasPrefix(req.RequestURI, "/query?api-version") && req.Method == "POST" {
+			fmt.Fprintf(w, "Expected response")
+			bodyData, _ := ioutil.ReadAll(req.Body)
+			queryBody = string(bodyData)
+		}
+	}))
+	defer server.Close()
+
+	serverUrl, _ := url.Parse(server.URL)
+
+	conf := azuread.TwinConfiguration{
+		URL:          *serverUrl,
+		ClientId:     "client1",
+		ClientSecret: "secret1",
+		TenantId:     "tenant1",
+		ResourceId:   "resource1",
+		AuthorityUrl: *serverUrl,
+	}
+
+	token := azuread.AccessToken{AccessToken: "abc123"}
+	query := "SELECT * FROM digitaltwins"
+	continuationToken := "{ \"continuationToken\": \"some token value\" }"
+
+	expectedBody := fmt.Sprintf("{ \"query\": \"%s\", \"continuationToken\": \"{ \\\"continuationToken\\\": \\\"some token value\\\" }\" }", query)
+
+	client := NewClient(&conf, &token)
+
+	_, err := client.queryTwin(query, &continuationToken)
+	if err != nil {
+		t.Errorf("Expected nil error, but got %v", err)
+		t.FailNow()
+	}
+
+	if queryBody != expectedBody {
+		t.Errorf("Expected body '%s', but got '%s'", expectedBody, queryBody)
+	}
+}
+
+func TestClient_queryTwin_FailedRequest(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.RequestURI == "/tenant1/oauth2/token" && req.Method == "POST" {
+			authResponse := getValidAuthenticationResponse()
+			fmt.Fprintf(w, authResponse)
+		} else if strings.HasPrefix(req.RequestURI, "/query?api-version") && req.Method == "POST" {
+			w.WriteHeader(404)
+			w.Write([]byte("{ \"error\": { \"code\": \"InvalidTwin\", \"message\": \"The request twin was not found\" } }"))
+		}
+	}))
+	defer server.Close()
+
+	serverUrl, _ := url.Parse(server.URL)
+
+	conf := azuread.TwinConfiguration{
+		URL:          *serverUrl,
+		ClientId:     "client1",
+		ClientSecret: "secret1",
+		TenantId:     "tenant1",
+		ResourceId:   "resource1",
+		AuthorityUrl: *serverUrl,
+	}
+
+	token := azuread.AccessToken{AccessToken: "abc123"}
+	query := "SELECT * FROM digitaltwins"
+
+	expectedError := "non-success status code returned: 404\nQuery: SELECT * FROM digitaltwins\nThe request twin was not found"
+
+	client := NewClient(&conf, &token)
+
+	_, err := client.queryTwin(query, nil)
+	if err == nil {
+		t.Logf("Expected error but got nil")
+		t.FailNow()
+	}
+
+	if err.Error() != expectedError {
+		t.Errorf("Expected error '%s', but got '%s'", expectedError, err.Error())
+	}
+}
+
 func getValidAuthenticationResponse() string {
 	return fmt.Sprintf("{ \"token_type\": \"Bearer\", \"expires_in\": \"3599\", \"ext_expires_in\": \"3599\", \"expires_on\": \"%[1]d\", \"not_before\": \"%[1]d\", \"resource\": \"0b07f429-9f4b-4714-9392-cc5e8e80c8b\", \"access_token\": \"abc123\" }", time.Now().Unix())
 }

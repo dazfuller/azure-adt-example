@@ -97,7 +97,7 @@ func (c *Client) queryTwin(query string, continuationToken *string) (*[]byte, er
 		requestBody = fmt.Sprintf(`{ "query": "%s" }`, query)
 	} else {
 		continuationData, _ := json.Marshal(*continuationToken)
-		requestBody = fmt.Sprintf(`{ "continuationToken": %s }`, string(continuationData))
+		requestBody = fmt.Sprintf(`{ "query": "%s", "continuationToken": %s }`, query, string(continuationData))
 	}
 
 	jsonData := []byte(requestBody)
