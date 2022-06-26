@@ -2,6 +2,10 @@ package digitaltwin
 
 import (
 	"azure-adt-example/azuread"
+	"azure-adt-example/digitaltwin/models"
+	"azure-adt-example/digitaltwin/models/rec33"
+	"azure-adt-example/digitaltwin/query"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -213,6 +217,376 @@ func TestClient_queryTwin_FailedRequest(t *testing.T) {
 	}
 }
 
+func TestExecuteBuilder(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.RequestURI == "/tenant1/oauth2/token" && req.Method == "POST" {
+			authResponse := getValidAuthenticationResponse()
+			fmt.Fprintf(w, authResponse)
+		} else if strings.HasPrefix(req.RequestURI, "/query?api-version") && req.Method == "POST" {
+			fmt.Fprintf(w, getSingleEntityResponseBody())
+		}
+	}))
+	defer server.Close()
+
+	serverUrl, _ := url.Parse(server.URL)
+
+	conf := azuread.TwinConfiguration{
+		URL:          *serverUrl,
+		ClientId:     "client1",
+		ClientSecret: "secret1",
+		TenantId:     "tenant1",
+		ResourceId:   "resource1",
+		AuthorityUrl: *serverUrl,
+	}
+
+	token := azuread.AccessToken{AccessToken: "abc123"}
+	client := NewClient(&conf, &token)
+
+	builder := query.NewBuilder(rec33.Building{}, false, false)
+
+	result, err := ExecuteBuilder[rec33.Building](client, builder)
+	if err != nil {
+		t.Logf("Expected nil error, but got %v", err)
+		t.FailNow()
+	}
+
+	if len(result) != 2 {
+		t.Logf("Expected 2 results, but got %d", len(result))
+		t.FailNow()
+	}
+
+	if !find(result, func(b rec33.Building) bool { return b.ExternalId == "building01" }) {
+		t.Errorf("Results does not contain expected 'building01' twin id")
+	}
+
+	if !find(result, func(b rec33.Building) bool { return b.ExternalId == "building02" }) {
+		t.Errorf("Results does not contain expected 'building02' twin id")
+	}
+}
+
+func TestExecuteBuilder2(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.RequestURI == "/tenant1/oauth2/token" && req.Method == "POST" {
+			authResponse := getValidAuthenticationResponse()
+			fmt.Fprintf(w, authResponse)
+		} else if strings.HasPrefix(req.RequestURI, "/query?api-version") && req.Method == "POST" {
+			fmt.Fprintf(w, get2EntityResponseBody())
+		}
+	}))
+	defer server.Close()
+
+	serverUrl, _ := url.Parse(server.URL)
+
+	conf := azuread.TwinConfiguration{
+		URL:          *serverUrl,
+		ClientId:     "client1",
+		ClientSecret: "secret1",
+		TenantId:     "tenant1",
+		ResourceId:   "resource1",
+		AuthorityUrl: *serverUrl,
+	}
+
+	token := azuread.AccessToken{AccessToken: "abc123"}
+	client := NewClient(&conf, &token)
+
+	builder := query.NewBuilder(rec33.Company{}, false, false)
+	_ = builder.AddJoin(rec33.Company{}, rec33.Building{}, "owns", false, false)
+
+	result, err := ExecuteBuilder2[rec33.Company, rec33.Building](client, builder)
+	if err != nil {
+		t.Logf("Expected nil error, but got %v", err)
+		t.FailNow()
+	}
+
+	if len(result) != 2 {
+		t.Logf("Expected 2 results, but got %d", len(result))
+		t.FailNow()
+	}
+
+	if result[0].Twin1.ExternalId != "company01" {
+		t.Errorf("Expected 'company01', but got '%s'", result[0].Twin1.ExternalId)
+	}
+
+	if result[1].Twin2.ExternalId != "building02" {
+		t.Errorf("Expected 'building02', but got '%s'", result[1].Twin2.ExternalId)
+	}
+}
+
+func TestExecuteBuilder3(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.RequestURI == "/tenant1/oauth2/token" && req.Method == "POST" {
+			authResponse := getValidAuthenticationResponse()
+			fmt.Fprintf(w, authResponse)
+		} else if strings.HasPrefix(req.RequestURI, "/query?api-version") && req.Method == "POST" {
+			fmt.Fprintf(w, get3EntityResponseBody())
+		}
+	}))
+	defer server.Close()
+
+	serverUrl, _ := url.Parse(server.URL)
+
+	conf := azuread.TwinConfiguration{
+		URL:          *serverUrl,
+		ClientId:     "client1",
+		ClientSecret: "secret1",
+		TenantId:     "tenant1",
+		ResourceId:   "resource1",
+		AuthorityUrl: *serverUrl,
+	}
+
+	token := azuread.AccessToken{AccessToken: "abc123"}
+	client := NewClient(&conf, &token)
+
+	builder := query.NewBuilder(rec33.Company{}, false, false)
+	_ = builder.AddJoin(rec33.Company{}, rec33.Building{}, "owns", false, false)
+	_ = builder.AddJoin(rec33.Building{}, rec33.Level{}, "isPartOf", false, false)
+
+	result, err := ExecuteBuilder3[rec33.Company, rec33.Building, rec33.Level](client, builder)
+	if err != nil {
+		t.Logf("Expected nil error, but got %v", err)
+		t.FailNow()
+	}
+
+	if len(result) != 2 {
+		t.Logf("Expected 2 results, but got %d", len(result))
+		t.FailNow()
+	}
+
+	if result[0].Twin3.ExternalId != "level01" {
+		t.Errorf("Expected 'level01', but got '%s'", result[0].Twin3.ExternalId)
+	}
+
+	if result[1].Twin3.ExternalId != "level02" {
+		t.Errorf("Expected 'level02', but got '%s'", result[1].Twin3.ExternalId)
+	}
+}
+
+func find[T models.IModel](list []T, f func(T) bool) bool {
+	for _, v := range list {
+		if f(v) {
+			return true
+		}
+	}
+	return false
+}
+
 func getValidAuthenticationResponse() string {
 	return fmt.Sprintf("{ \"token_type\": \"Bearer\", \"expires_in\": \"3599\", \"ext_expires_in\": \"3599\", \"expires_on\": \"%[1]d\", \"not_before\": \"%[1]d\", \"resource\": \"0b07f429-9f4b-4714-9392-cc5e8e80c8b\", \"access_token\": \"abc123\" }", time.Now().Unix())
+}
+
+func getSingleEntityResponseBody() string {
+	building1 := rec33.Building{
+		GenericModel: models.GenericModel{
+			ExternalId: "building01",
+			ETag:       "abc123etag",
+			Metadata: map[string]interface{}{
+				"model": rec33.Building{}.Model(),
+				"name": map[string]interface{}{
+					"lastUpdated": "2022-06-22T09:09:17",
+				},
+			},
+		},
+		Name: "Test Building 1",
+	}
+
+	building2 := rec33.Building{
+		GenericModel: models.GenericModel{
+			ExternalId: "building02",
+			ETag:       "abc456etag",
+			Metadata: map[string]interface{}{
+				"model": rec33.Building{}.Model(),
+				"name": map[string]interface{}{
+					"lastUpdated": "2021-10-21T18:09:17",
+				},
+			},
+		},
+		Name: "Test Building 2",
+	}
+
+	building1Body, _ := json.Marshal(building1)
+	building2Body, _ := json.Marshal(building2)
+
+	queryResult := QueryResultGeneric{
+		Results: digitalTwinResults{
+			{
+				"building": building1Body,
+			},
+			{
+				"building": building2Body,
+			},
+		},
+		ContinuationToken: "",
+	}
+
+	resultBody, _ := json.Marshal(queryResult)
+
+	return string(resultBody)
+}
+
+func get2EntityResponseBody() string {
+	metadata := map[string]interface{}{
+		"model": rec33.Building{}.Model(),
+		"name": map[string]interface{}{
+			"lastUpdated": "2022-06-22T09:09:17",
+		},
+	}
+
+	company1 := rec33.Company{
+		GenericModel: models.GenericModel{
+			ExternalId: "company01",
+			ETag:       "abc123etag",
+			Metadata:   metadata,
+		},
+		Logo: "logo.svg",
+		Name: "Test Company 1",
+	}
+
+	company2 := rec33.Company{
+		GenericModel: models.GenericModel{
+			ExternalId: "company02",
+			ETag:       "abc456etag",
+			Metadata:   metadata,
+		},
+		Logo: "logo.svg",
+		Name: "Test Company 2",
+	}
+
+	building1 := rec33.Building{
+		GenericModel: models.GenericModel{
+			ExternalId: "building01",
+			ETag:       "abc123etag",
+			Metadata:   metadata,
+		},
+		Name: "Test Building 1",
+	}
+
+	building2 := rec33.Building{
+		GenericModel: models.GenericModel{
+			ExternalId: "building02",
+			ETag:       "abc456etag",
+			Metadata:   metadata,
+		},
+		Name: "Test Building 2",
+	}
+
+	company1Body, _ := json.Marshal(company1)
+	company2Body, _ := json.Marshal(company2)
+	building1Body, _ := json.Marshal(building1)
+	building2Body, _ := json.Marshal(building2)
+
+	queryResult := QueryResultGeneric{
+		Results: digitalTwinResults{
+			{
+				"company":  company1Body,
+				"building": building1Body,
+			},
+			{
+				"company":  company2Body,
+				"building": building2Body,
+			},
+		},
+		ContinuationToken: "",
+	}
+
+	resultBody, _ := json.Marshal(queryResult)
+
+	return string(resultBody)
+}
+
+func get3EntityResponseBody() string {
+	metadata := map[string]interface{}{
+		"model": rec33.Building{}.Model(),
+		"name": map[string]interface{}{
+			"lastUpdated": "2022-06-22T09:09:17",
+		},
+	}
+
+	company1 := rec33.Company{
+		GenericModel: models.GenericModel{
+			ExternalId: "company01",
+			ETag:       "abc123etag",
+			Metadata:   metadata,
+		},
+		Logo: "logo.svg",
+		Name: "Test Company 1",
+	}
+
+	company2 := rec33.Company{
+		GenericModel: models.GenericModel{
+			ExternalId: "company02",
+			ETag:       "abc456etag",
+			Metadata:   metadata,
+		},
+		Logo: "logo.svg",
+		Name: "Test Company 2",
+	}
+
+	building1 := rec33.Building{
+		GenericModel: models.GenericModel{
+			ExternalId: "building01",
+			ETag:       "abc123etag",
+			Metadata:   metadata,
+		},
+		Name: "Test Building 1",
+	}
+
+	building2 := rec33.Building{
+		GenericModel: models.GenericModel{
+			ExternalId: "building02",
+			ETag:       "abc456etag",
+			Metadata:   metadata,
+		},
+		Name: "Test Building 2",
+	}
+
+	level1 := rec33.Level{
+		GenericModel: models.GenericModel{
+			ExternalId: "level01",
+			ETag:       "abc123etag",
+			Metadata:   metadata,
+		},
+		Name:            "Level 1",
+		Number:          1,
+		PersonCapacity:  20,
+		PersonOccupancy: 10,
+	}
+
+	level2 := rec33.Level{
+		GenericModel: models.GenericModel{
+			ExternalId: "level02",
+			ETag:       "abc456etag",
+			Metadata:   metadata,
+		},
+		Name:            "Level 2",
+		Number:          2,
+		PersonCapacity:  5,
+		PersonOccupancy: 8,
+	}
+
+	company1Body, _ := json.Marshal(company1)
+	company2Body, _ := json.Marshal(company2)
+	building1Body, _ := json.Marshal(building1)
+	building2Body, _ := json.Marshal(building2)
+	level1Body, _ := json.Marshal(level1)
+	level2Body, _ := json.Marshal(level2)
+
+	queryResult := QueryResultGeneric{
+		Results: digitalTwinResults{
+			{
+				"company":  company1Body,
+				"building": building1Body,
+				"level":    level1Body,
+			},
+			{
+				"company":  company2Body,
+				"building": building2Body,
+				"level":    level2Body,
+			},
+		},
+		ContinuationToken: "",
+	}
+
+	resultBody, _ := json.Marshal(queryResult)
+
+	return string(resultBody)
 }
