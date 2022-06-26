@@ -1,5 +1,7 @@
 # Azure Digital Twin Query API
 
+[![codecov](https://codecov.io/gh/dazfuller/azure-adt-example/branch/main/graph/badge.svg?token=GRK06HOQ61)](https://codecov.io/gh/dazfuller/azure-adt-example)
+
 This is a sample project I created to learn [Go](https://go.dev/). There's an existing SDK for working with
 [Azure Digital Twin](https://azure.microsoft.com/services/digital-twins/) but only for the management plain,
 so I thought I'd try and write a small application which uses the [Query API](https://docs.microsoft.com/rest/api/digital-twins/dataplane/query/querytwins),
