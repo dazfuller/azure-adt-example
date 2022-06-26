@@ -14,21 +14,15 @@ func main() {
 	client := digitaltwin.NewClient(config, nil)
 
 	from := rec33.Company{}
-	builder := query.NewBuilder(from, false)
+	builder := query.NewBuilder(from, false, false)
 	var err error
-	if err = builder.AddJoin(from, rec33.Building{}, "owns", false); err != nil {
+	if err = builder.AddJoin(from, rec33.Building{}, "owns", false, false); err != nil {
 		log.Fatal(err)
 	}
-	if err = builder.AddJoin(rec33.Building{}, rec33.Level{}, "isPartOf", true); err != nil {
+	if err = builder.AddJoin(rec33.Building{}, rec33.Level{}, "isPartOf", true, false); err != nil {
 		log.Fatal(err)
 	}
 	if err = builder.WhereId(from, "Elastacloud"); err != nil {
-		log.Fatal(err)
-	}
-	if err = builder.WhereStringFunction(rec33.Building{}, "Name", query.Contains, "Office"); err != nil {
-		log.Fatal(err)
-	}
-	if err = builder.WhereBooleanFunction(rec33.Level{}, "Name", query.IsDefined, nil); err != nil {
 		log.Fatal(err)
 	}
 
